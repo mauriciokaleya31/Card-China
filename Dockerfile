@@ -36,9 +36,11 @@ WORKDIR /app
 # Install production runtime libs
 RUN apt-get update && apt-get install -y \
     libsqlite3-0 \
+    libsqlite3-dev \
     python3 \
     make \
     g++ \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./

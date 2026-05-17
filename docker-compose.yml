@@ -1,6 +1,8 @@
 services:
   app:
+    container_name: card-china-portal
     build: .
+    pull_policy: build
     ports:
       - "${HOST_PORT:-8080}:3000"
     volumes:
@@ -8,9 +10,4 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/id_cards.db
-      # Add other environment variables here as needed
-      # - GEMINI_API_KEY=${GEMINI_API_KEY}
     restart: always
-
-volumes:
-  data:
