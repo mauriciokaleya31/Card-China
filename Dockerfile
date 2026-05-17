@@ -1,5 +1,5 @@
 # Stage 1: Build the application
-FROM node:20-bookworm AS builder
+FROM node:20 AS builder
 
 WORKDIR /app
 
@@ -15,30 +15,32 @@ RUN apt-get update && apt-get install -y \
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies for build)
+# Install ALL dependencies
 RUN npm install --legacy-peer-deps
 
 # Copy the rest of the application code
 COPY . .
 
-# Run build with verbose output to catch errors
-RUN npm run build
+# Environment variables for build
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
+# Run build steps separately for better error identification
+RUN npm run lint
+RUN npx vite build
+RUN npx esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs
 
 # Stage 2: Production environment
-FROM node:20-bookworm-slim
+FROM node:20-slim
 
 WORKDIR /app
 
 # Install production runtime libs
 RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
     libsqlite3-0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
-# Only install production dependencies
 RUN npm install --omit=dev --legacy-peer-deps
 
 # Copy built assets from builder stage

@@ -303,28 +303,7 @@ export default function App() {
                 </div>
               </button>
               
-              {!installPrompt && (
-                <div className="group relative">
-                  <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400 cursor-help border border-slate-200">?</div>
-                  <div className="absolute top-full right-0 mt-3 w-72 p-6 bg-white rounded-2xl shadow-2xl border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] scale-95 group-hover:scale-100">
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Monitor className="w-4 h-4 text-slate-900" />
-                        <h4 className="text-[12px] font-black text-slate-900 uppercase">Instalar Aplicativo</h4>
-                      </div>
-                      <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
-                        Para habilitar a instalação desktop, o sistema deve ser aberto fora desta pré-visualização.
-                        <br/><br/>
-                        1. Clique em <span className="text-slate-900">"Abrir em nova aba"</span> no topo do editor.
-                        <br/>
-                        2. Na aba aberta, procure o ícone <span className="text-slate-900">"+"</span> ou <span className="text-slate-900">"Instalar"</span> à direita na barra de endereços.
-                        <br/><br/>
-                        <span className="text-emerald-600">Vantagens:</span> Funcionamento offline e melhor integração com sensores biométricos.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+
             </div>
 
             {hasPermission('can_access_admin') && (
