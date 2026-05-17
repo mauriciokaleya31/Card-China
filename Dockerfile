@@ -1,11 +1,23 @@
 # Stage 1: Build the application
-FROM node:20 AS builder
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
-# Copy package files and install all dependencies
+# Install build essentials for native modules (like better-sqlite3)
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    pkg-config \
+    libsqlite3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
 COPY package*.json ./
-RUN npm install
+
+# Install all dependencies including devDependencies for building
+# Using --legacy-peer-deps to avoid potential conflicts in different environments
+RUN npm install --legacy-peer-deps
 
 # Copy the rest of the application code
 COPY . .
@@ -14,26 +26,31 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Production environment
-FROM node:20-slim
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 
-# Install production dependencies only
-# better-sqlite3 requires native build tools, so we might need them even for install
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+# Install production build essentials and runtime libs for better-sqlite3
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
-RUN npm install --omit=dev
+# Only install production dependencies
+RUN npm install --omit=dev --legacy-peer-deps
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Create a directory for the database to ensure it's predictable
-RUN mkdir -p /app/data
+# Create a directory for the database
+RUN mkdir -p /app/data && chmod 777 /app/data
 
 # Environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV DATABASE_PATH=/app/data/id_cards.db
 
 # Expose the application port
 EXPOSE 3000
