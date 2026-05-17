@@ -10,37 +10,6 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(), 
       tailwindcss(),
-      VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
-        workbox: {
-          maximumFileSizeToCacheInBytes: 30 * 1024 * 1024, // 30MB
-        },
-        manifest: {
-          name: 'Portal de Identidade Consular',
-          short_name: 'Portal ID',
-          description: 'Sistema oficial de emissão e gestão de identificações diplomáticas e consulares',
-          theme_color: '#0f172a',
-          icons: [
-            {
-              src: 'pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any maskable'
-            }
-          ]
-        }
-      })
     ],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),

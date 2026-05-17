@@ -1,5 +1,6 @@
 {
   "name": "Portal de Identidade Consular",
   "description": "Sistema oficial de emissão e gestão de identificações diplomáticas e consulares com autenticação biométrica e exportação segura.",
-  "requestFramePermissions": ["camera"]
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

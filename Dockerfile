@@ -25,10 +25,8 @@ COPY . .
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Run build steps separately for better error identification
-RUN npm run lint
-RUN npx vite build
-RUN npx esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs
+# Run build
+RUN npm run build
 
 # Stage 2: Production environment
 FROM node:20-slim
@@ -38,9 +36,13 @@ WORKDIR /app
 # Install production runtime libs
 RUN apt-get update && apt-get install -y \
     libsqlite3-0 \
+    python3 \
+    make \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
+# Re-install production dependencies to ensure native modules are linked to the correct versions
 RUN npm install --omit=dev --legacy-peer-deps
 
 # Copy built assets from builder stage
