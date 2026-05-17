@@ -1,0 +1,90 @@
+{
+  "entities": {
+    "IDCard": {
+      "title": "IDCard",
+      "description": "Dados do cartão de identidade emitido",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "fatherName": { "type": "string" },
+        "motherName": { "type": "string" },
+        "birthDateAndPlace": { "type": "string" },
+        "civilStatus": { "type": "string" },
+        "profession": { "type": "string" },
+        "address": { "type": "string" },
+        "idNumber": { "type": "string" },
+        "entryDateChina": { "type": "string" },
+        "documentPresented": { "type": "string" },
+        "issueDate": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "photo": { "type": "string", "description": "Base64 image" },
+        "fingerprint": { "type": "string", "description": "Base64 image" },
+        "signature": { "type": "string", "description": "Base64 image" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullName", "idNumber"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Usuário do sistema",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "operator"] },
+        "photo": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "Configurações globais do sistema",
+      "type": "object",
+      "properties": {
+        "systemName": { "type": "string" },
+        "primaryColor": { "type": "string" },
+        "logo": { "type": "string" }
+      }
+    },
+    "Template": {
+      "title": "Template",
+      "description": "Imagens de fundo do cartão",
+      "type": "object",
+      "properties": {
+        "imageData": { "type": "string" }
+      }
+    },
+    "Layout": {
+      "title": "Layout",
+      "description": "Posições dos elementos no cartão",
+      "type": "object",
+      "properties": {
+        "front": { "type": "object" },
+        "back": { "type": "object" }
+      }
+    }
+  },
+  "firestore": {
+    "/id_cards/{cardId}": {
+      "schema": "IDCard",
+      "description": "Coleção de cartões emitidos"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Coleção de usuários do sistema"
+    },
+    "/settings/main": {
+      "schema": "SystemSettings",
+      "description": "Configurações do sistema"
+    },
+    "/templates/{templateId}": {
+      "schema": "Template",
+      "description": "Modelos de imagem"
+    },
+    "/layout/current": {
+      "schema": "Layout",
+      "description": "Configurações de layout"
+    }
+  }
+}

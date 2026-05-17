@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: id_cards
+    // Fields: fullName, fatherName, motherName, birthDateAndPlace, civilStatus, 
+    //         profession, address, idNumber, entryDateChina, documentPresented, 
+    //         issueDate, expiryDate, photo, fingerprint, signature, created_at
+    //
+    // Collection: users
+    // Fields: name, email, role, photo, created_at
+    //
+    // Collection: settings
+    // Fields: systemName, primaryColor, logo
+    //
+    // Collection: templates
+    // Fields: imageData
+    //
+    // Collection: layout
+    // Fields: front, back
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         request.auth.token.email == "kaleyapt@gmail.com");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidUser(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             data.role in ['admin', 'operator'];
+    }
+
+    function isValidCard(data) {
+      return data.fullName is string && data.fullName.size() > 0 &&
+             data.idNumber is string && data.idNumber.size() > 0;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if (isAdmin() && isValidUser(request.resource.data)) || 
+                      (request.auth.token.email == "kaleyapt@gmail.com" && request.auth.uid == userId);
+      allow update: if isAdmin() && isValidUser(request.resource.data);
+      allow delete: if isAdmin() && userId != request.auth.uid;
+    }
+
+    match /id_cards/{cardId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && isValidCard(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /settings/main {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /templates/{templateId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /layout/{layoutId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+  }
+}
