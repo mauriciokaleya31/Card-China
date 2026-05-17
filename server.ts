@@ -79,7 +79,7 @@ async function startServer() {
   const app = express();
   app.use(express.json({ limit: '50mb' }));
 
-  const PORT = process.env.PORT || 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Auth Routes
   app.post("/api/login", (req, res) => {

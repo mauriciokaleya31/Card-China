@@ -1,9 +1,9 @@
 # Stage 1: Build the application
-FROM node:20-bookworm-slim AS builder
+FROM node:20-bookworm AS builder
 
 WORKDIR /app
 
-# Install build essentials for native modules (like better-sqlite3)
+# Install build essentials for native modules
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -15,14 +15,13 @@ RUN apt-get update && apt-get install -y \
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies including devDependencies for building
-# Using --legacy-peer-deps to avoid potential conflicts in different environments
+# Install ALL dependencies (including devDependencies for build)
 RUN npm install --legacy-peer-deps
 
 # Copy the rest of the application code
 COPY . .
 
-# Build the frontend and the backend server
+# Run build with verbose output to catch errors
 RUN npm run build
 
 # Stage 2: Production environment
@@ -30,11 +29,12 @@ FROM node:20-bookworm-slim
 
 WORKDIR /app
 
-# Install production build essentials and runtime libs for better-sqlite3
+# Install production runtime libs
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
+    libsqlite3-0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
