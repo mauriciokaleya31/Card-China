@@ -189,7 +189,7 @@ export default function App() {
         }
       });
     } else {
-      alert('Para instalar a Versão Desktop:\n\n1. Esta funcionalidade pode não estar disponível dentro da pré-visualização. Clique no botão "Abrir numa nova aba" no topo do editor.\n2. Na nova aba, verifique o ícone de computador/instalação na barra de endereço do navegador.\n3. Se não aparecer, verifique se o navegador suporta PWAs (Chrome, Edge ou Safari recomendado).');
+      alert('Funcionalidade disponível apenas em navegadores compatíveis (Chrome/Edge) e fora da pré-visualização.');
     }
   };
 

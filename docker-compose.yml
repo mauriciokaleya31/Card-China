@@ -1,7 +1,6 @@
 services:
   app:
     build: .
-    image: cardchina-app
     ports:
       - "${HOST_PORT:-8080}:3000"
     volumes:
