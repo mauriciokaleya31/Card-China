@@ -263,7 +263,10 @@ export const IDList: React.FC<IDListProps> = ({ cards, onDelete }) => {
                   <FileText className="w-5 h-5" />
                 </button>
                 <button 
-                  onClick={() => onDelete(card.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(card.id);
+                  }}
                   className="p-3 bg-red-500 text-white rounded-full hover:scale-110 transition-all shadow-lg"
                 >
                   <Trash2 className="w-5 h-5" />

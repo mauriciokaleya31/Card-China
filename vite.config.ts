@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import { fileURLToPath } from 'url';
+import { VitePWA } from 'vite-plugin-pwa';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,6 +14,58 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(), 
       tailwindcss(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        manifest: {
+          name: 'Portal de Identidade Embaixada',
+          short_name: 'EmbaixadaID',
+          description: 'Sistema de Gestão de Identidade Consular e Diplomática',
+          theme_color: '#0f172a',
+          background_color: '#ffffff',
+          display: 'standalone',
+          icons: [
+            {
+              src: 'https://img.icons8.com/color/192/shield.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any maskable'
+            },
+            {
+              src: 'https://img.icons8.com/color/512/shield.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any maskable'
+            }
+          ]
+        },
+        workbox: {
+          maximumFileSizeToCacheInBytes: 5000000,
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'unsplash-images',
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 * 30, // 30 Days
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/img\.icons8\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'icon-cache',
+              }
+            }
+          ]
+        }
+      })
     ],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
@@ -21,6 +74,11 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
         'WebSdk': path.resolve(__dirname, 'src/lib/websdk-shim.ts'),
+      },
+    },
+    build: {
+      rollupOptions: {
+        external: ['onnxruntime-web', 'onnxruntime-web/webgpu'],
       },
     },
     server: {

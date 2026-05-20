@@ -69,19 +69,77 @@ import firebaseConfig from '../../firebase-applet-config.json';
 import { IDCard } from './IDCard';
 import { format, parseISO } from 'date-fns';
 
+const resizeAndCompressImage = (
+  base64Str: string,
+  maxWidth: number,
+  maxHeight: number,
+  quality: number,
+  forceJpeg: boolean = false
+): Promise<string> => {
+  return new Promise((resolve) => {
+    if (!base64Str || !base64Str.startsWith('data:image/')) {
+      resolve(base64Str);
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth || height > maxHeight) {
+        if (width > height) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        } else {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        const format = forceJpeg ? 'image/jpeg' : (base64Str.includes('image/png') ? 'image/png' : 'image/jpeg');
+        const compressed = canvas.toDataURL(format, quality);
+        resolve(compressed);
+      } else {
+        resolve(base64Str);
+      }
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
+    img.src = base64Str;
+  });
+};
+
 interface AdminDashboardProps {
   onLogout: () => void;
   onGoToIssuance: () => void;
   installPrompt: any;
   onInstall: () => void;
+  settings: SystemSettings | null;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onGoToIssuance, installPrompt, onInstall }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onGoToIssuance, installPrompt, onInstall, settings: initialSettings }) => {
   const [activeTab, setActiveTab] = useState<'stats' | 'users' | 'settings' | 'updates'>('stats');
   const [users, setUsers] = useState<User[]>([]);
   const [cards, setCards] = useState<IDCardData[]>([]);
-  const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [settings, setSettings] = useState<SystemSettings | null>(initialSettings);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialSettings) {
+      setSettings(initialSettings);
+    }
+  }, [initialSettings]);
+
   const [selectedCard, setSelectedCard] = useState<IDCardData | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>('Todos');
   
@@ -122,19 +180,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onGoTo
       console.error("Firestore error (cards):", error);
     });
 
-    // Listen to settings
-    const unsubSettings = onSnapshot(doc(db, 'settings', 'main'), (snapshot) => {
-      if (snapshot.exists()) {
-        setSettings(snapshot.data() as SystemSettings);
-      }
-    }, (error) => {
-      console.error("Firestore error (settings):", error);
-    });
-
     return () => {
       unsubUsers();
       unsubCards();
-      unsubSettings();
     };
   }, []);
 
@@ -302,8 +350,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onGoTo
     if (!confirm("Tem certeza que deseja eliminar este usuário?")) return;
     try {
       await deleteDoc(doc(db, 'users', id));
-    } catch (error) {
-      alert("Erro ao eliminar usuário");
+      alert("Usuário eliminado com sucesso");
+    } catch (error: any) {
+      console.error("Erro ao eliminar usuário:", error);
+      alert("Erro ao eliminar usuário: " + (error.message || "Sem permissão"));
     }
   };
 
@@ -312,6 +362,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onGoTo
     if (!settings) return;
     try {
       await setDoc(doc(db, 'settings', 'main'), settings);
+      try {
+        localStorage.setItem('system_settings', JSON.stringify(settings));
+      } catch (err) {
+        console.warn("Could not save settings to localStorage:", err);
+      }
       alert("Configurações salvas com sucesso!");
     } catch (error) {
       alert("Erro ao salvar configurações");
@@ -350,8 +405,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onGoTo
     if (!confirm("Tem certeza que deseja eliminar este cartão?")) return;
     try {
       await deleteDoc(doc(db, 'id_cards', id));
-    } catch (error) {
-      alert("Erro ao eliminar cartão");
+      alert("Cartão eliminado com sucesso");
+    } catch (error: any) {
+      console.error("Erro ao eliminar cartão:", error);
+      alert("Erro ao eliminar cartão: " + (error.message || "Sem permissão"));
     }
   };
 
@@ -843,7 +900,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onGoTo
                                 <CreditCard className="w-4 h-4" />
                               </button>
                               <button 
-                                onClick={() => card.id && handleDeleteCard(card.id as any)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  card.id && handleDeleteCard(card.id as any);
+                                }}
                                 className="p-2 text-slate-400 hover:text-red-500 transition-all"
                                 title="Eliminar"
                               >
@@ -1035,9 +1095,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onGoTo
                               const file = e.target.files?.[0];
                               if (file) {
                                 const reader = new FileReader();
-                                reader.onloadend = () => {
+                                reader.onloadend = async () => {
                                   const base64 = reader.result as string;
-                                  setSettings(prev => prev ? {...prev, loginBackground: base64} : { id: 'main', systemName: '', primaryColor: '#10b981', logo: '', loginBackground: base64 });
+                                  try {
+                                    const compressed = await resizeAndCompressImage(base64, 1366, 768, 0.75, true);
+                                    setSettings(prev => prev ? {...prev, loginBackground: compressed} : { id: 'main', systemName: '', primaryColor: '#10b981', logo: '', loginBackground: compressed });
+                                  } catch (err) {
+                                    console.error("Compression failed:", err);
+                                    setSettings(prev => prev ? {...prev, loginBackground: base64} : { id: 'main', systemName: '', primaryColor: '#10b981', logo: '', loginBackground: base64 });
+                                  }
                                 };
                                 reader.readAsDataURL(file);
                               }
@@ -1162,9 +1228,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onGoTo
                               const file = e.target.files?.[0];
                               if (file) {
                                 const reader = new FileReader();
-                                reader.onloadend = () => {
+                                reader.onloadend = async () => {
                                   const base64 = reader.result as string;
-                                  setSettings(prev => prev ? {...prev, logo: base64} : { id: 'main', systemName: '', primaryColor: '#10b981', logo: base64 });
+                                  try {
+                                    const compressed = await resizeAndCompressImage(base64, 350, 350, 0.85, false);
+                                    setSettings(prev => prev ? {...prev, logo: compressed} : { id: 'main', systemName: '', primaryColor: '#10b981', logo: compressed });
+                                  } catch (err) {
+                                    console.error("Logo compression failed:", err);
+                                    setSettings(prev => prev ? {...prev, logo: base64} : { id: 'main', systemName: '', primaryColor: '#10b981', logo: base64 });
+                                  }
                                 };
                                 reader.readAsDataURL(file);
                               }

@@ -23,7 +23,15 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [settings, setSettings] = useState<SystemSettings | null>(() => {
+    try {
+      const saved = localStorage.getItem('system_settings');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [view, setView] = useState<'form' | 'list' | 'settings' | 'admin'>('form');
   const [cards, setCards] = useState<IDCardData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -81,14 +89,42 @@ export default function App() {
     });
 
     // Listen to Settings (publicly readable)
+    let isSnapshotFired = false;
     const unsubSettings = onSnapshot(doc(db, 'settings', 'main'), (snapshot) => {
+      isSnapshotFired = true;
       if (snapshot.exists()) {
-        setSettings(snapshot.data() as SystemSettings);
+        const data = snapshot.data() as SystemSettings;
+        setSettings(data);
+        try {
+          localStorage.setItem('system_settings', JSON.stringify(data));
+        } catch (e) {
+          console.warn("Could not save settings to localStorage:", e);
+        }
       }
+      setIsInitialLoad(false);
     }, (error) => {
       // If permission denied, it's likely rules haven't been deployed or user is logged out (though it should be public)
       console.warn("Firestore settings access restricted. Check your security rules.", error);
+      setIsInitialLoad(false);
     });
+
+    // In case snapshot takes too long (e.g. slow connection or cold start), fallback gracefully to localStorage cached values
+    const fallbackTimeout = setTimeout(() => {
+      if (!isSnapshotFired) {
+        console.log("Settings fetching timed out. Falling back to cached localStorage settings.");
+        setIsInitialLoad(false);
+      }
+    }, 1500);
+
+    // If completely offline, immediately resolve using localStorage to prevent blocking
+    if (!navigator.onLine) {
+      try {
+        const saved = localStorage.getItem('system_settings');
+        if (saved) {
+          setIsInitialLoad(false);
+        }
+      } catch (e) {}
+    }
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -98,6 +134,7 @@ export default function App() {
     return () => {
       unsubAuth();
       unsubSettings();
+      clearTimeout(fallbackTimeout);
       if (unsubUser) unsubUser();
       if (unsubCards) unsubCards();
     };
@@ -147,8 +184,10 @@ export default function App() {
     if (!confirm('Tem a certeza que deseja eliminar este registo?')) return;
     try {
       await deleteDoc(doc(db, 'id_cards', id));
-    } catch (error) {
+      alert('Registo eliminado com sucesso.');
+    } catch (error: any) {
       console.error("Erro ao eliminar cartão:", error);
+      alert('Erro ao eliminar cartão: ' + (error.message || 'Sem permissão ou erro de rede'));
     }
   };
 
@@ -193,6 +232,17 @@ export default function App() {
     }
   };
 
+  if (isInitialLoad) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-white font-black tracking-widest text-sm uppercase animate-pulse">Carregando Configurações...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div style={dynamicStyles}>
@@ -209,6 +259,7 @@ export default function App() {
           onGoToIssuance={() => setView('form')} 
           installPrompt={installPrompt}
           onInstall={handleInstall}
+          settings={settings}
         />
       </div>
     );
