@@ -364,8 +364,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onGoTo
       await setDoc(doc(db, 'settings', 'main'), settings);
       try {
         localStorage.setItem('system_settings', JSON.stringify(settings));
+        if (typeof window !== 'undefined' && 'caches' in window) {
+          const cache = await caches.open('custom-assets');
+          if (settings.logo && settings.logo.trim() !== '') {
+            const res = await fetch(settings.logo);
+            const blob = await res.blob();
+            await cache.put('/custom-logo.png', new Response(blob, {
+              headers: { 'Content-Type': blob.type || 'image/png' }
+            }));
+          } else {
+            await cache.delete('/custom-logo.png');
+          }
+        }
       } catch (err) {
-        console.warn("Could not save settings to localStorage:", err);
+        console.warn("Could not save settings or logo to localStorage/cache:", err);
       }
       alert("Configurações salvas com sucesso!");
     } catch (error) {

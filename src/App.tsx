@@ -21,6 +21,25 @@ import {
 } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 
+const syncLogoToCache = async (logoBase64: string | undefined) => {
+  if (typeof window !== 'undefined' && 'caches' in window) {
+    try {
+      const cache = await caches.open('custom-assets');
+      if (logoBase64 && logoBase64.trim() !== '') {
+        const res = await fetch(logoBase64);
+        const blob = await res.blob();
+        await cache.put('/custom-logo.png', new Response(blob, {
+          headers: { 'Content-Type': blob.type || 'image/png' }
+        }));
+      } else {
+        await cache.delete('/custom-logo.png');
+      }
+    } catch (e) {
+      console.warn("Error caching logo in Cache API:", e);
+    }
+  }
+};
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [settings, setSettings] = useState<SystemSettings | null>(() => {
@@ -69,6 +88,11 @@ export default function App() {
             // Bootstrap first admin if doc doesn't exist yet
             setUser({ id: firebaseUser.uid, name: 'Administrador', email: 'kaleyapt@gmail.com', role: 'admin' });
           }
+        }, (error) => {
+          console.warn("Firestore error fetching user data:", error);
+          if (firebaseUser.email === 'kaleyapt@gmail.com') {
+            setUser({ id: firebaseUser.uid, name: 'Administrador', email: 'kaleyapt@gmail.com', role: 'admin' });
+          }
         });
 
         // Listen to Cards (only when authenticated)
@@ -90,6 +114,8 @@ export default function App() {
 
     // Listen to Settings (publicly readable)
     let isSnapshotFired = false;
+    let cacheTimeout: any = null;
+
     const unsubSettings = onSnapshot(doc(db, 'settings', 'main'), (snapshot) => {
       isSnapshotFired = true;
       if (snapshot.exists()) {
@@ -97,11 +123,26 @@ export default function App() {
         setSettings(data);
         try {
           localStorage.setItem('system_settings', JSON.stringify(data));
+          syncLogoToCache(data.logo);
         } catch (e) {
           console.warn("Could not save settings to localStorage:", e);
         }
       }
-      setIsInitialLoad(false);
+
+      const isFromCache = snapshot.metadata.fromCache;
+      if (isFromCache && navigator.onLine) {
+        if (!cacheTimeout) {
+          cacheTimeout = setTimeout(() => {
+            setIsInitialLoad(false);
+          }, 800); // Wait up to 800ms for live server values, otherwise proceed with cached
+        }
+      } else {
+        if (cacheTimeout) {
+          clearTimeout(cacheTimeout);
+          cacheTimeout = null;
+        }
+        setIsInitialLoad(false);
+      }
     }, (error) => {
       // If permission denied, it's likely rules haven't been deployed or user is logged out (though it should be public)
       console.warn("Firestore settings access restricted. Check your security rules.", error);
@@ -135,6 +176,7 @@ export default function App() {
       unsubAuth();
       unsubSettings();
       clearTimeout(fallbackTimeout);
+      if (cacheTimeout) clearTimeout(cacheTimeout);
       if (unsubUser) unsubUser();
       if (unsubCards) unsubCards();
     };

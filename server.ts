@@ -1,3 +1,13 @@
+// Clean up global/globalThis __dirname pollute in some loaders (like tsx) where it is set to "."
+// This prevents vite-plugin-pwa and other libraries from crashing with:
+// TypeError [ERR_INVALID_ARG_VALUE]: The argument 'filename' must be a file URL object, file URL string, or absolute path string. Received '.'
+if (typeof global !== 'undefined' && (global as any).__dirname === '.') {
+  delete (global as any).__dirname;
+}
+if (typeof globalThis !== 'undefined' && (globalThis as any).__dirname === '.') {
+  delete (globalThis as any).__dirname;
+}
+
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";

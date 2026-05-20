@@ -25,13 +25,13 @@ export default defineConfig(({ mode }) => {
           display: 'standalone',
           icons: [
             {
-              src: 'https://img.icons8.com/color/192/shield.png',
+              src: '/pwa-icon-192.png',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any maskable'
             },
             {
-              src: 'https://img.icons8.com/color/512/shield.png',
+              src: '/pwa-icon-512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any maskable'

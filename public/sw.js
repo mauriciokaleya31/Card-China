@@ -1,4 +1,4 @@
-const CACHE_NAME = 'embaixada-digital-v3';
+const CACHE_NAME = 'embaixada-digital-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -40,6 +40,28 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
+  // Intercept PWA launcher icon requests dynamically to serve the user's custom system logo
+  if (url.pathname === '/pwa-icon-192.png' || url.pathname === '/pwa-icon-512.png') {
+    event.respondWith(
+      caches.open('custom-assets').then((customCache) => {
+        return customCache.match('/custom-logo.png').then((cachedCustom) => {
+          if (cachedCustom) {
+            return cachedCustom;
+          }
+          // Fallback to default shield icons from pre-cache if custom logo doesn't exist yet
+          const fallbackUrl = url.pathname === '/pwa-icon-192.png'
+            ? 'https://img.icons8.com/color/192/shield.png'
+            : 'https://img.icons8.com/color/512/shield.png';
+            
+          return caches.match(fallbackUrl).then((cachedFallback) => {
+            return cachedFallback || fetch(fallbackUrl);
+          });
+        });
+      })
+    );
+    return;
+  }
 
   // Skip Firebase APIs, Firestore websockets, auth requests
   if (
